@@ -1,0 +1,54 @@
+# ───────────────────────────────────────────────────────────────
+# Python
+# ───────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtual environment (huge, machine-specific — never push this)
+.venv/
+venv/
+env/
+
+# ───────────────────────────────────────────────────────────────
+# Project runtime data
+# ───────────────────────────────────────────────────────────────
+# Log files written by run_all.sh
+logs/
+
+# Generated reports (recreated by "Run analysis")
+reports/*
+!reports/.gitkeep
+
+# Student uploads (may contain private student data — do NOT push)
+# ...but keep the demo sample files so others can try the tool.
+submissions/*
+!submissions/.gitkeep
+!submissions/Ravi__essay.txt
+!submissions/Priya__report.txt
+!submissions/Meera__notes.txt
+
+# ───────────────────────────────────────────────────────────────
+# Large / regenerable AI assets
+# ───────────────────────────────────────────────────────────────
+# The textbook PDF is large (~64 MB) — share it separately, not via git.
+*.pdf
+
+# FAISS vector index is binary and rebuilt by `python app.py` — regenerable.
+faiss_science_index/
+rag_app/faiss_science_index/
+
+# ───────────────────────────────────────────────────────────────
+# OS / editor junk
+# ───────────────────────────────────────────────────────────────
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# ───────────────────────────────────────────────────────────────
+# Secrets / local config
+# ───────────────────────────────────────────────────────────────
+.env
+.env.*

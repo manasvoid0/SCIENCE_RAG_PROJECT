@@ -22,7 +22,7 @@ INDEX_DIR = "faiss_science_index"
 print("Booting up the AI Engine...")
 embeddings = OllamaEmbeddings(model="nomic-embed-text")
 db = FAISS.load_local(INDEX_DIR, embeddings, allow_dangerous_deserialization=True)
-llm = OllamaLLM(model="qwen2.5:7b")
+llm = OllamaLLM(model="qwen2.5:3b")  # 3b fits an 8GB Mac comfortably
 
 system_prompt = (
     "You are a helpful 10th-grade science tutor.\n"

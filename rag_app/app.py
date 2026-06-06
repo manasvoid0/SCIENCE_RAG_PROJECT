@@ -60,7 +60,7 @@ else:  # If the database folder ALREADY exists (meaning we ran this before)
 # =========================================================================
 
 print("\n--- Step 3: Initializing Qwen 2.5 via Ollama... ---")  # Prints a status message
-llm = OllamaLLM(model="qwen2.5:7b")  # Wakes up the massive Qwen 2.5 brain model for thinking
+llm = OllamaLLM(model="qwen2.5:3b")  # Wakes up the Qwen 2.5 (3b) brain model; 3b fits an 8GB Mac
 
 system_prompt = (  # Creates a variable to hold the strict rules for the AI
     "You are a helpful 10th-grade science tutor.\n"  # Tells the AI its personality
