@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Science RAG + Plagiarism Detector — Visual Guide</title>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --line:#334155;
+    --text:#e2e8f0; --muted:#94a3b8; --brand:#38bdf8; --brand2:#818cf8;
+    --green:#34d399; --amber:#fbbf24; --red:#f87171; --purple:#a78bfa;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.6;
+  }
+  a{color:var(--brand);text-decoration:none}
+  code{background:#0b1220;padding:2px 6px;border-radius:6px;font-size:.9em;color:#cbd5e1}
+
+  /* layout */
+  .wrap{max-width:1080px;margin:0 auto;padding:0 22px}
+  header.hero{
+    text-align:center;padding:70px 22px 50px;
+    background:radial-gradient(1200px 400px at 50% -10%,rgba(56,189,248,.18),transparent),
+               radial-gradient(900px 400px at 80% 0,rgba(129,140,248,.15),transparent);
+    border-bottom:1px solid var(--line);
+  }
+  .hero h1{font-size:2.5rem;margin:.2em 0;line-height:1.15}
+  .hero p{color:var(--muted);font-size:1.15rem;max-width:680px;margin:.4em auto}
+  .pill{display:inline-block;background:var(--panel);border:1px solid var(--line);
+        color:var(--muted);padding:6px 14px;border-radius:999px;font-size:.82rem;margin:4px}
+
+  /* sticky nav */
+  nav.bar{position:sticky;top:0;z-index:10;background:rgba(15,23,42,.85);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  nav.bar .wrap{display:flex;gap:18px;flex-wrap:wrap;padding:12px 22px;font-size:.9rem}
+  nav.bar a{color:var(--muted)}
+  nav.bar a:hover{color:var(--text)}
+
+  section{padding:54px 0;border-bottom:1px solid var(--line)}
+  h2{font-size:1.7rem;margin:0 0 6px}
+  h2 .num{color:var(--brand);font-weight:700;margin-right:10px}
+  .lead{color:var(--muted);margin:0 0 26px;max-width:760px}
+
+  /* cards grid */
+  .grid{display:grid;gap:16px}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:780px){.g2,.g3{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px 20px}
+  .card h3{margin:.1em 0 .4em;font-size:1.05rem;display:flex;align-items:center;gap:8px}
+  .card p{margin:.3em 0;color:var(--muted);font-size:.95rem}
+  .tag{font-size:.72rem;padding:3px 9px;border-radius:999px;font-weight:600}
+  .t-blue{background:rgba(56,189,248,.15);color:var(--brand)}
+  .t-violet{background:rgba(167,139,250,.16);color:var(--purple)}
+  .t-green{background:rgba(52,211,153,.15);color:var(--green)}
+  .t-amber{background:rgba(251,191,36,.15);color:var(--amber)}
+  .t-red{background:rgba(248,113,113,.15);color:var(--red)}
+
+  /* flow diagram */
+  .flow{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap;margin:8px 0}
+  .node{background:var(--panel2);border:1px solid var(--line);border-radius:12px;
+    padding:14px 16px;flex:1;min-width:120px;text-align:center}
+  .node b{display:block;font-size:.96rem}
+  .node span{font-size:.8rem;color:var(--muted)}
+  .arrow{display:flex;align-items:center;color:var(--brand);font-size:1.4rem;font-weight:700}
+  @media(max-width:780px){.arrow{transform:rotate(90deg)}}
+
+  /* two models */
+  .model{display:flex;gap:16px;align-items:flex-start}
+  .model .dot{font-size:1.6rem}
+  .vs{display:flex;align-items:center;justify-content:center;color:var(--muted);
+    font-weight:700;font-size:1.2rem}
+
+  /* table */
+  table{width:100%;border-collapse:collapse;font-size:.92rem;margin-top:10px;
+    background:var(--panel);border-radius:var(--radius);overflow:hidden}
+  th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line)}
+  th{background:var(--panel2);color:var(--text);font-weight:600}
+  td{color:var(--muted)}
+  tr:last-child td{border-bottom:none}
+
+  .stack{display:flex;flex-direction:column;gap:6px}
+  .step{display:flex;gap:12px;align-items:flex-start;background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+  .step .n{flex:none;width:28px;height:28px;border-radius:50%;background:var(--brand);
+    color:#04263a;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:.85rem}
+
+  footer{padding:40px 22px 70px;text-align:center;color:var(--muted);font-size:.9rem}
+  .icon{width:1.15em;height:1.15em;vertical-align:-.18em;fill:currentColor}
+  .kbd{font-size:.8rem;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>🔬 Science Tutor <span style="color:var(--muted)">+</span> 🕵️ Plagiarism Detector</h1>
+    <p>Two AI tools under one dashboard — running <b>100% locally</b> on your own
+       computer with Ollama. No paid APIs, no data leaves the machine.</p>
+    <div>
+      <span class="pill">Ollama · qwen2.5 · nomic-embed-text</span>
+      <span class="pill">FastAPI · Streamlit</span>
+      <span class="pill">FAISS · scikit-learn</span>
+    </div>
+  </div>
+</header>
+
+<nav class="bar"><div class="wrap">
+  <a href="#big">Big picture</a>
+  <a href="#models">Two models</a>
+  <a href="#rag">RAG flow</a>
+  <a href="#plag">Plagiarism flow</a>
+  <a href="#checks">3 checks</a>
+  <a href="#files">The files</a>
+  <a href="#glossary">Glossary</a>
+</div></nav>
+
+<!-- BIG PICTURE -->
+<section id="big"><div class="wrap">
+  <h2><span class="num">1</span>The big picture</h2>
+  <p class="lead">Think of it as <b>two engines that think</b> and <b>several screens that just ask them questions</b>.
+     A master dashboard links to both tools.</p>
+  <div class="grid g3">
+    <div class="card">
+      <h3>🧰 Master Dashboard <span class="tag t-blue">:8500</span></h3>
+      <p>A simple menu page that links to both tools. Launches nothing itself.</p>
+    </div>
+    <div class="card">
+      <h3>🔬 Science Tutor <span class="tag t-blue">:8000 / :8501</span></h3>
+      <p>Ask questions about a 10th-grade science textbook. Answers come only from the book (RAG).</p>
+    </div>
+    <div class="card">
+      <h3>🕵️ Plagiarism Detector <span class="tag t-blue">:8001 / :8502 / :8503</span></h3>
+      <p>Students upload assignments; teachers get AI / copy / paraphrase reports.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- TWO MODELS -->
+<section id="models"><div class="wrap">
+  <h2><span class="num">2</span>The two AI models</h2>
+  <p class="lead">They do different jobs and cannot replace each other.</p>
+  <div class="grid g2">
+    <div class="card">
+      <div class="model"><div class="dot">🧠</div><div>
+        <h3>qwen2.5 <span class="tag t-violet">the brain</span></h3>
+        <p>Reads, reasons, and <b>writes</b>. It writes the tutor's answers and
+           <b>judges</b> whether an essay looks AI-written.</p>
+        <p class="kbd">Use <code>qwen2.5:3b</code> on 8&nbsp;GB RAM · <code>7b</code> on 16&nbsp;GB+</p>
+      </div></div>
+    </div>
+    <div class="card">
+      <div class="model"><div class="dot">📏</div><div>
+        <h3>nomic-embed-text <span class="tag t-green">the meaning-ruler</span></h3>
+        <p>Turns text into <b>numbers that capture meaning</b>. Used to <b>search</b>
+           the textbook and to <b>compare meaning</b> between students.</p>
+        <p class="kbd">Tiny &amp; fast — never the weak link.</p>
+      </div></div>
+    </div>
+  </div>
+  <p class="lead" style="margin-top:18px;text-align:center;color:var(--text)">
+    <b>nomic finds &amp; compares · qwen thinks &amp; writes</b></p>
+</div></section>
+
+<!-- RAG FLOW -->
+<section id="rag"><div class="wrap">
+  <h2><span class="num">3</span>Science Tutor — how a question is answered (RAG)</h2>
+  <p class="lead">RAG = <b>R</b>etrieval-<b>A</b>ugmented <b>G</b>eneration. We fetch real
+     textbook text first, then let the AI answer from it — so it can't make things up.</p>
+  <div class="flow">
+    <div class="node"><b>You</b><span>type a question</span></div>
+    <div class="arrow">→</div>
+    <div class="node"><b>nomic-embed</b><span>question → numbers</span></div>
+    <div class="arrow">→</div>
+    <div class="node"><b>FAISS</b><span>find 3 closest chunks</span></div>
+    <div class="arrow">→</div>
+    <div class="node"><b>qwen2.5</b><span>writes the answer</span></div>
+    <div class="arrow">→</div>
+    <div class="node"><b>You</b><span>see the answer</span></div>
+  </div>
+  <p class="lead" style="margin-top:14px">Setup happens once in <code>app.py</code>: read the PDF →
+     chop into chunks → turn into numbers → save to the FAISS index.</p>
+</div></section>
+
+<!-- PLAGIARISM FLOW -->
+<section id="plag"><div class="wrap">
+  <h2><span class="num">4</span>Plagiarism Detector — from upload to report</h2>
+  <div class="grid g2">
+    <div class="stack">
+      <div class="step"><div class="n">1</div><div><b>Student uploads</b> a file →
+        saved into <code>submissions/</code>. No checking yet.</div></div>
+      <div class="step"><div class="n">2</div><div><b>Teacher clicks "Run analysis".</b>
+        Old reports are cleared first.</div></div>
+      <div class="step"><div class="n">3</div><div><b>Extract text</b> from each PDF / Word / PPT / TXT.</div></div>
+      <div class="step"><div class="n">4</div><div>Run the <b>4 detectors</b> (see next section).</div></div>
+    </div>
+    <div class="stack">
+      <div class="step"><div class="n">5</div><div><b>Combine</b> the scores into one
+        <b>integrity score (0–100)</b> per student.</div></div>
+      <div class="step"><div class="n">6</div><div><b>Save a report</b> for each student into <code>reports/</code>.</div></div>
+      <div class="step"><div class="n">7</div><div>Teacher sees a <b>colour-coded table</b> +
+        per-student detail with flagged lines.</div></div>
+      <div class="step"><div class="n">8</div><div><b>The teacher decides</b> — the system
+        only scores and flags.</div></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 3 CHECKS -->
+<section id="checks"><div class="wrap">
+  <h2><span class="num">5</span>The detection checks</h2>
+  <p class="lead">Two checks <b>measure</b> (exact, model-size doesn't matter) and one <b>judges</b> (needs the brain).</p>
+  <div class="grid g2">
+    <div class="card">
+      <h3>Copy check <span class="tag t-amber">TF-IDF · math</span></h3>
+      <p>Catches student-vs-student copy-paste by comparing <b>which words</b> were used. Rock-solid &amp; instant.</p>
+    </div>
+    <div class="card">
+      <h3>Paraphrase check <span class="tag t-violet">embeddings</span></h3>
+      <p>Catches reworded copying by comparing <b>meaning</b>. Beats simple synonym-swapping.</p>
+    </div>
+    <div class="card">
+      <h3>AI detector <span class="tag t-red">qwen2.5 · judges</span></h3>
+      <p>Reads the essay and judges if it looks AI-written. The only check that needs the thinking model.</p>
+    </div>
+    <div class="card">
+      <h3>Originality <span class="tag t-green">positive · math</span></h3>
+      <p>Rewards own work: vocabulary diversity, sentence-length variation, personal phrases.</p>
+    </div>
+  </div>
+  <table>
+    <tr><th>Check</th><th>Principle</th><th>Tool</th><th>Bigger model helps?</th></tr>
+    <tr><td>Copy</td><td>counts words</td><td>math only</td><td>No</td></tr>
+    <tr><td>Paraphrase</td><td>measures meaning</td><td>nomic-embed-text</td><td>No</td></tr>
+    <tr><td>Originality</td><td>writing-style math</td><td>pure Python</td><td>No</td></tr>
+    <tr><td>AI detector</td><td>judges style</td><td>qwen2.5</td><td><b>Yes</b></td></tr>
+  </table>
+</div></section>
+
+<!-- FILES -->
+<section id="files"><div class="wrap">
+  <h2><span class="num">6</span>The files</h2>
+  <p class="lead">Each backend "thinks"; each UI is "just a button that asks a backend".</p>
+  <div class="grid g2">
+    <div class="card">
+      <h3>🔬 rag_app/</h3>
+      <p><code>app.py</code> — builds the index + terminal tutor</p>
+      <p><code>api.py</code> — tutor backend, <code>/ask</code> endpoint</p>
+      <p><code>rag_ui.py</code> — the chat screen</p>
+    </div>
+    <div class="card">
+      <h3>🕵️ plagiarism_app/</h3>
+      <p><code>plagiarism_api.py</code> — backend (submit / analyze / reports)</p>
+      <p><code>student_ui.py</code> — upload screen</p>
+      <p><code>teacher_ui.py</code> — report dashboard</p>
+      <p><code>report_builder.py</code> — combines scores</p>
+    </div>
+    <div class="card">
+      <h3>🧪 detectors/</h3>
+      <p><code>ollama_client.py</code> — one line to Ollama</p>
+      <p><code>text_extractor.py</code> — file → text</p>
+      <p><code>copy_checker.py</code> · <code>paraphrase.py</code></p>
+      <p><code>ai_detector.py</code> · <code>originality.py</code></p>
+    </div>
+    <div class="card">
+      <h3>🧰 glue</h3>
+      <p><code>dashboard/main_dashboard.py</code> — the menu</p>
+      <p><code>run_all.sh</code> / <code>run_all.bat</code> — start all</p>
+      <p><code>requirements.txt</code> — Python libraries</p>
+      <p><code>.gitignore</code> — what not to push</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- GLOSSARY -->
+<section id="glossary"><div class="wrap">
+  <h2><span class="num">7</span>Glossary</h2>
+  <table>
+    <tr><th>Word</th><th>Plain meaning</th></tr>
+    <tr><td>Model</td><td>A trained AI file (we use two).</td></tr>
+    <tr><td>Ollama</td><td>Program that runs the models on your computer.</td></tr>
+    <tr><td>Embedding / vector</td><td>Numbers that represent the meaning of text.</td></tr>
+    <tr><td>FAISS</td><td>A fast "find the most similar numbers" database.</td></tr>
+    <tr><td>RAG</td><td>Find real text first, then let the AI answer from it.</td></tr>
+    <tr><td>Backend / API</td><td>A program that answers requests (no buttons).</td></tr>
+    <tr><td>Endpoint</td><td>One address on a backend, e.g. <code>/ask</code>.</td></tr>
+    <tr><td>Streamlit</td><td>Turns Python into clickable web screens.</td></tr>
+    <tr><td>FastAPI</td><td>Builds the backends.</td></tr>
+    <tr><td>JSON</td><td>Simple labelled data: <code>{"name":"Ravi","score":85}</code>.</td></tr>
+  </table>
+</div></section>
+
+<footer>
+  <p>Built to run locally · qwen2.5 + nomic-embed-text via Ollama</p>
+  <p><b>One sentence:</b> two small AI models run on the computer — one finds and
+     compares text, the other reads and judges it — and every screen is just a button
+     that asks them a question.</p>
+</footer>
+
+</body>
+</html>
