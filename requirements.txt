@@ -1,0 +1,31 @@
+# Install everything with:  pip install -r requirements.txt
+
+# --- Web servers & UI ---
+fastapi
+uvicorn
+streamlit
+requests
+python-multipart   # needed by FastAPI to accept file uploads
+
+# --- File reading (plagiarism) ---
+pymupdf            # PDF  (imported as "fitz")
+python-docx        # Word (imported as "docx")
+python-pptx        # PowerPoint (imported as "pptx")
+
+# --- Math / detection ---
+scikit-learn       # TF-IDF + cosine similarity (peer copy check)
+numpy
+pandas             # teacher summary table
+
+# --- RAG app (your existing science tutor) ---
+langchain-community
+langchain-text-splitters
+langchain-ollama
+langchain-classic
+langchain-core
+faiss-cpu
+tqdm
+
+# NOTE: No HuggingFace / sentence-transformers needed.
+# All AI goes through Ollama (qwen2.5:7b + nomic-embed-text), which you install
+# separately from https://ollama.com -- not via pip.
