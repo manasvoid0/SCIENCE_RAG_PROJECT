@@ -59,25 +59,46 @@ def run_analysis():
       1. extract text  2. score originality  3. detect AI  4. compare to peers.
     Then save one JSON report per student into the reports/ folder.
     """
+    prep = _prepare()
+    summary = [_analyze_student(name, prep) for name in prep["texts"]]
+    return {"status": "done", "count": len(summary), "summary": summary}
+
+
+# In-memory state shared between /prepare and /analyze_one so the teacher UI can
+# run the slow per-student step one at a time and show a progress bar.
+_PREP = {}
+
+
+def _prepare() -> dict:
+    """
+    Fast step: clear old reports, read every submission's text, run the
+    cross-student copy check, and work out each student's closest peer.
+    Returns (and caches) everything the per-student step needs.
+    """
     files = [f for f in os.listdir(SUBMISSIONS_DIR) if not f.startswith(".")]
     if not files:
         raise HTTPException(400, "No submissions to analyse.")
 
-    # Step 1: read text out of every file, keyed by student name.
+    # Clear old reports so results reflect ONLY the current submissions.
+    for old in os.listdir(REPORTS_DIR):
+        if old.endswith(".json"):
+            os.remove(os.path.join(REPORTS_DIR, old))
+
+    # Read text out of every file, keyed by student name.
     texts = {}
     for fname in files:
         try:
             texts[_student_from_filename(fname)] = extract_text(
                 os.path.join(SUBMISSIONS_DIR, fname))
         except Exception as e:
-            texts[_student_from_filename(fname)] = ""  # unreadable -> empty text
+            texts[_student_from_filename(fname)] = ""
             print(f"Could not read {fname}: {e}")
 
-    # Step 2: one cross-student copy check covers everyone at once.
+    # One cross-student copy check covers everyone at once.
     copy = check_all_submissions(texts)
     worst_peer = copy["max_similarity_per_student"]
 
-    # Find, for each student, the single peer they most resemble (for paraphrase).
+    # For each student, find the single peer they most resemble (for paraphrase).
     closest_peer = {}
     for m in copy["matches"]:
         a, b, s = m["student_a"], m["student_b"], m["similarity_percent"]
@@ -86,37 +107,53 @@ def run_analysis():
         if s >= closest_peer.get(b, (None, 0))[1]:
             closest_peer[b] = (a, s)
 
-    # Step 3: per-student AI + originality + paraphrase, then build the report.
-    summary = []
-    for student, text in texts.items():
-        ai = detect_ai_content(text)
-        orig = score_originality(text)
+    prep = {"texts": texts, "worst_peer": worst_peer, "closest_peer": closest_peer}
+    _PREP.clear()
+    _PREP.update(prep)
+    return prep
 
-        # Paraphrase check against the most-similar peer (if any).
-        peer_name = closest_peer.get(student, (None, 0))[0]
-        if peer_name:
-            para = detect_paraphrase(text, texts[peer_name])
-        else:
-            para = {"paraphrase_percent": 0.0, "pairs": []}
 
-        report = build_report(student, ai, worst_peer.get(student, 0.0), para, orig)
-        report["closest_peer"] = peer_name
+def _analyze_student(student: str, prep: dict) -> dict:
+    """Slow step for ONE student: AI + originality + paraphrase, save report."""
+    text = prep["texts"][student]
+    ai = detect_ai_content(text)              # this is the slow part (Qwen)
+    orig = score_originality(text)
 
-        # Save the full report to disk.
-        with open(os.path.join(REPORTS_DIR, f"{student}.json"), "w") as f:
-            json.dump(report, f, indent=2)
+    peer_name = prep["closest_peer"].get(student, (None, 0))[0]
+    if peer_name:
+        para = detect_paraphrase(text, prep["texts"][peer_name])
+    else:
+        para = {"paraphrase_percent": 0.0, "pairs": []}
 
-        # Keep a small row for the summary table.
-        summary.append({
-            "student": student,
-            "integrity_score": report["integrity_score"],
-            "verdict": report["verdict"],
-            "ai_percentage": ai["ai_percentage"],
-            "peer_similarity": worst_peer.get(student, 0.0),
-            "paraphrase_percent": para["paraphrase_percent"],
-        })
+    report = build_report(student, ai, prep["worst_peer"].get(student, 0.0), para, orig)
+    report["closest_peer"] = peer_name
 
-    return {"status": "done", "count": len(summary), "summary": summary}
+    with open(os.path.join(REPORTS_DIR, f"{student}.json"), "w") as f:
+        json.dump(report, f, indent=2)
+
+    return {
+        "student": student,
+        "integrity_score": report["integrity_score"],
+        "verdict": report["verdict"],
+        "ai_percentage": ai["ai_percentage"],
+        "peer_similarity": prep["worst_peer"].get(student, 0.0),
+        "paraphrase_percent": para["paraphrase_percent"],
+    }
+
+
+@app.post("/prepare")
+def prepare():
+    """Teacher UI step 1: clears old reports and returns the student list."""
+    prep = _prepare()
+    return {"students": list(prep["texts"].keys())}
+
+
+@app.post("/analyze_one/{student}")
+def analyze_one(student: str):
+    """Teacher UI step 2: analyse ONE student (called once per student)."""
+    if student not in _PREP.get("texts", {}):
+        raise HTTPException(400, "Call /prepare first.")
+    return _analyze_student(student, _PREP)
 
 
 @app.get("/all_reports")
